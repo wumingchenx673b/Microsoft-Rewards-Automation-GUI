@@ -22,15 +22,23 @@ jobs:
     - name: Install Linux GUI dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb python3-tk libxrender1 libxtst6 libxi6
+        # 安装虚拟显示环境和 PyQt6 运行所需的系统底层库
+        sudo apt-get install -y xvfb python3-tk libxrender1 libxtst6 libxi6 libegl1-mesa libgl1-mesa-glx
 
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
+        # 强制安装报错提示缺少的 PyInstaller，以及打包命令里出现的 PyQt6 和 playwright
+        pip install pyinstaller pyvirtualdisplay PyQt6 playwright
+        # 初始化 playwright 的浏览器内核（因为它用于自动化刷积分）
+        playwright install chromium
+        
+        # 如果项目自带 requirements.txt，也一并安装
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install pyvirtualdisplay
 
     - name: Run script with Virtual Display
       run: |
-        # 尝试在云端虚拟显示器下运行该项目
-        xvfb-run --server-args="-screen 0 1024x768x24" python *.py
+        # 使用 xvfb 虚拟显示器直接运行主程序
+        # 注意：这里我们避开让它去打包，直接尝试用 python 运行它的图形界面主文件 gui.py
+        # 如果项目根目录下还有 main.py，也可以根据后续报错进行调整
+        xvfb-run --server-args="-screen 0 1024x768x24" python gui.py
