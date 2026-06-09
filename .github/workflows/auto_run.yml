@@ -2,9 +2,9 @@ name: Microsoft Rewards Automation
 
 on:
   schedule:
-    # 每天北京时间早上 08:30 自动运行 (UTC 时间 00:30)
+    # 每天北京时间早上 08:30 自动运行 (对应 UTC 时间 00:30)
     - cron: '30 0 * * *'
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch: # 允许你在 GitHub 页面上随时手动点击按钮触发运行
 
 jobs:
   run-automation:
@@ -22,27 +22,36 @@ jobs:
     - name: Install Linux GUI dependencies
       run: |
         sudo apt-get update
-        # 补齐 PyQt6 运行所需的完整 Linux 图形与渲染库（包含 libegl1 和 xcb 插件依赖）
+        # 一次性补齐新版 Ubuntu 系统下 PyQt6 XCB 插件所需的全部底层图形、渲染及协议依赖库
         sudo apt-get install -y xvfb python3-tk libxrender1 libxtst6 libxi6 \
-          libegl1 libgl1 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-cursor0
+          libegl1 libgl1 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-cursor0 \
+          libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+          libxcb-render-util0 libxcb-xkb1 libxcb-shape0 libxcb-util1 \
+          libfontconfig1 libdbus-1-3 libgl1-mesa-dri libglx-mesa0
 
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        # 安装自动化和虚拟显示的核心库
+        # 安装自动化核心库、虚拟显示库以及 GUI 支持库
         pip install pyinstaller pyvirtualdisplay PyQt6 playwright
+        # 初始化 playwright 的内置 Chromium 浏览器内核（用于自动化刷积分）
         playwright install chromium
         
+        # 如果项目根目录下自带 requirements.txt，则一并补充安装
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Run script with Virtual Display
       env:
-        # 读取你在 Settings -> Secrets 中配置的加密账号密码
+        # 安全读取你在 Settings -> Secrets 中配置的加密账号密码
         MS_USER: ${{ secrets.MS_USER }}
         MS_PASSWORD: ${{ secrets.MS_PASSWORD }}
       run: |
-        # 1. 动态生成符合项目需求的 API.json 配置文件
+        # 1. 在当前根目录下动态生成自动化脚本所需的配置文件 API.json
+        # 💡 注意提示：如果运行后提示账号格式不对，请确认原项目的 API.json 里用的键名是 "username" 还是 "email" 或 "account"
         echo "{\"username\": \"$MS_USER\", \"password\": \"$MS_PASSWORD\"}" > API.json
 
-        # 2. 启动虚拟显示屏幕并直接运行主程序
+        # 2. 开启 Qt 插件的高级调试日志（若未来系统更新导致报错，能清晰打印出缺少的组件）
+        export QT_DEBUG_PLUGINS=1
+
+        # 3. 启动虚拟显示屏幕（Xvfb）并静默执行主程序 gui.py
         xvfb-run --server-args="-screen 0 1024x768x24" python gui.py
