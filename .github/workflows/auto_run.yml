@@ -1,0 +1,39 @@
+name: Microsoft Rewards Automation
+
+on:
+  schedule:
+    # 每天北京时间早上 08:30 自动运行 (UTC 时间 00:30)
+    - cron: '30 0 * * *'
+  workflow_dispatch: # 允许你手动点击按钮触发运行
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Linux GUI dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb python3-tk libxrender1 libxtst6 libxi6
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # 如果项目有依赖文件则安装
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install pyvirtualdisplay
+
+    - name: Run script with Virtual Display
+      run: |
+        # 使用 xvfb 虚拟显示接管 GUI 界面，尝试在云端无界面启动
+        # 注意：这里假设主程序入口在最外层的某个 Python 文件中。
+        # 如果稍后运行报错提示找不到文件，我们需要根据报错修改下面这一行。
+        xvfb-run --server-args="-screen 0 1024x768x24" python *.py
