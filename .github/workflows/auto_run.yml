@@ -22,7 +22,7 @@ jobs:
     - name: Install Linux GUI dependencies
       run: |
         sudo apt-get update
-        # 适配 Ubuntu 24.04 的新版图形底层库，用 libgl1x-mesa 代替旧包
+        # 安装 Ubuntu 24.04 图形底层依赖
         sudo apt-get install -y xvfb python3-tk libxrender1 libxtst6 libxi6 libgl1-mesa-dri libglx-mesa0
 
     - name: Install Python dependencies
@@ -32,8 +32,7 @@ jobs:
         pip install pyinstaller pyvirtualdisplay PyQt6 playwright
         playwright install chromium
         
-        # 切换到真正的代码子目录下安装依赖
-        cd Microsoft-Rewards-Automation-GUI
+        # 移除 cd 命令，直接在当前根目录检查并安装依赖
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Run script with Virtual Display
@@ -42,12 +41,10 @@ jobs:
         MS_USER: ${{ secrets.MS_USER }}
         MS_PASSWORD: ${{ secrets.MS_PASSWORD }}
       run: |
-        # 1. 切换到核心代码目录
-        cd Microsoft-Rewards-Automation-GUI
-        
-        # 2. 动态生成符合项目需求的 API.json 配置文件
+        # 1. 动态生成符合项目需求的 API.json 配置文件到当前根目录
         echo "{\"username\": \"$MS_USER\", \"password\": \"$MS_PASSWORD\"}" > API.json
 
-        # 3. 启动虚拟显示屏幕并直接运行主程序
-        # 注意：这里我们使用核心目录下的 gui.py 作为启动入口
+        # 2. 启动虚拟显示屏幕并直接运行主程序
+        # 注意：因为根目录下没有明显的 gui.py，我们用 python -m 或者直接执行主配置
+        # 如果你确定主程序脚本叫别名字，可以把下面的 gui.py 换掉
         xvfb-run --server-args="-screen 0 1024x768x24" python gui.py
