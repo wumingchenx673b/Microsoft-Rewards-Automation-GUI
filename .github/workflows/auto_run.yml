@@ -22,7 +22,7 @@ jobs:
     - name: Install Linux GUI dependencies
       run: |
         sudo apt-get update
-        # 保持图形底层库完整，防止代码内部有引用冲突
+        # 保持完整的底层图形支持全家桶
         sudo apt-get install -y xvfb python3-tk libxrender1 libxtst6 libxi6 \
           libegl1 libgl1 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-cursor0 \
           libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
@@ -32,7 +32,7 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        # 安装核心依赖
+        # 安装核心自动化和浏览器控制依赖
         pip install pyinstaller pyvirtualdisplay PyQt6 playwright
         playwright install chromium
         
@@ -44,8 +44,12 @@ jobs:
         MS_USER: ${{ secrets.MS_USER }}
         MS_PASSWORD: ${{ secrets.MS_PASSWORD }}
       run: |
-        # 1. 在当前根目录下动态生成自动化脚本所需的配置文件 API.json
+        # 1. 动态生成符合项目需求的 API.json 配置文件
         echo "{\"username\": \"$MS_USER\", \"password\": \"$MS_PASSWORD\"}" > API.json
 
-        # 2. 切换运行核心入口为 main.py（避开 GUI 阻塞），并挂载虚拟显示器防止浏览器报错
+        # 2. 【核心修复】自动把源码里的手动输入菜单，强制默认改成选择“2”（使用并开始每日任务）
+        # 这样程序在云端运行时就不会因为死等人类敲键盘而崩溃
+        sed -i 's/choice = input/choice = "2" #/g' main.py
+
+        # 3. 启动虚拟显示屏幕并直接运行主程序
         xvfb-run --server-args="-screen 0 1024x768x24" python main.py
