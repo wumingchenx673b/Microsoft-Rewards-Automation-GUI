@@ -38,17 +38,23 @@ jobs:
       env:
         MS_USER: ${{ secrets.MS_USER }}
         MS_PASSWORD: ${{ secrets.MS_PASSWORD }}
-        MS_COOKIE: ${{ secrets.MS_COOKIE }} # 引入你刚在本地抓好的 Cookie
       run: |
         # 1. 动态生成符合项目需求的 API.json 配置文件
         echo "{\"username\": \"$MS_USER\", \"password\": \"$MS_PASSWORD\"}" > API.json
 
-        # 2. 创建 cookies 专属目录，并将密文还原为本地文件
-        mkdir -p Assets/cookies
-        # 【注意】请查看你在本地生成的 json 文件名叫什么（比如叫 cookies.json 或你的账号名.json）
-        # 将下面这一行的 "auth_cookies.json" 替换为与你本地一模一样的文件名
-        echo "$MS_COOKIE" > Assets/cookies/auth_cookies.json
+        # 2. 核心大招：异步管道。先输入 1，睡 30 秒等登录完成，再输入空回车确认保存
+        echo "=== 步骤 1：启动云端浏览器，尝试自动填密登录并等待 30 秒 ==="
+        (echo "1"; sleep 30; echo "") | xvfb-run --server-args="-screen 0 1280x1024x24" python main.py || true
 
-        # 3. 既然有了 Cookie，直接模拟键盘输入 "2" 挺进每日任务
-        echo "=== 检测到本地 Cookie 已成功注入，开始刷每日积分 ==="
+        # 3. 检查当前目录下到底有没有顺利生成 cookie 文件
+        echo "=== 步骤 2：检查云端 Cookie 是否成功保存 ==="
+        if [ -d "Assets/cookies" ]; then
+          echo "🎉 极好！检测到 Cookie 文件夹已生成："
+          ls -R Assets/cookies
+        else
+          echo "⚠️ 警告：未检测到 Cookie 文件夹，可能是微软触发了图形验证码拦截。"
+        fi
+
+        # 4. 拿着新鲜热乎的 Cookie 直接挺进每日任务
+        echo "=== 步骤 3：尝试执行每日积分任务 ==="
         echo "2" | xvfb-run --server-args="-screen 0 1280x1024x24" python main.py
